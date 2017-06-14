@@ -34,14 +34,12 @@ txdb <- makeTxDbFromGFF("genes.gtf", format="gtf") # mm10 genome annotation
 
 mm10.genes <- genes(txdb)
 
-mm10.promoters.500bp <- promoters(mm10.genes,upstream = 500,downstream =0)
+mm10.promoters.500bp <- promoters(mm10.genes,upstream = 2000,downstream =500)
 
-save(mm10.promoters.500bp,file = "mm10.promoters.500bp.RData")
+save(mm10.promoters.500bp,file = "mm10.promoters.2kbpUP.500bpdown.RData")
 #write.table(as.data.frame(genes)[,-4], file="Just_genes.txt", colnames=F, sep="\t")
 
 ####################################################################################################################################
-
-mESC_exp_SamFil_GenFil = read.csv("mESC_exp_SamFil_GenFil.csv",header = T,row.names = 1)
 
 
 
@@ -49,14 +47,14 @@ mESC_exp_SamFil_GenFil = read.csv("mESC_exp_SamFil_GenFil.csv",header = T,row.na
 
 sample.name = substr(colnames(mESC_exp_SamFil_GenFil),13,100)
 WGBS.name = paste(sample.name,".CpG.txt.gz",sep ="")
-Promoter.meth.big.table = data.frame(order = c(1:37334))
+Promoter.meth.big.table = data.frame(order = c(1:38922))
 
 
 
 for(one.WGBS.lib in WGBS.name) {
 #one.WGBS.lib = "A02.CpG.txt.gz"
 system(paste("gzip -d ./simutaneous/GSE68642_RAW/" ,one.WGBS.lib,sep =""))
-
+#length(Promoter.meth.big.table.clean)
 meth.info = fread(paste("./simutaneous/GSE68642_RAW/" ,substr(one.WGBS.lib,1,11),sep =""))
 
 # <chromosome> <position> <strand> <count methylated> <count non-methylated> <C-context> <trinucleotide context>
@@ -87,3 +85,52 @@ gc() # collect garbale to free memory
 system(paste("gzip ./simutaneous/GSE68642_RAW/" ,substr(one.WGBS.lib,1,11) ,sep =""))
 
 }
+
+###############
+
+save(Promoter.meth.big.table,file = "Promoter.meth.2kup500down.big.table.Rdata")
+
+###############
+
+## trim Promoter.meth.big.table, for subsequent analysis
+
+Promoter.meth.big.table.clean = Promoter.meth.big.table
+
+rownames(Promoter.meth.big.table.clean) = Promoter.meth.big.table[,2]
+
+Promoter.meth.big.table.clean = Promoter.meth.big.table.clean[,seq(from = 3, to = 115, by =2)]
+
+colnames(Promoter.meth.big.table.clean) = sample.name
+
+save(Promoter.meth.big.table.clean,file = "Promoter.meth.big.table.clean.up2kbdown500.RData")
+
+
+####################################################################################
+
+load("Promoter.meth.big.table.clean.up2kbdown500.RData")
+
+mESC_exp_SamFil_GenFil = read.csv("mESC_exp_SamFil_GenFil.csv",header = T,row.names = 1)
+
+# try look into methylation data
+# how many sample for each promoter?
+
+hist(apply(Promoter.meth.big.table.clean,1, function(x)  length(na.omit(x))   ))
+ 
+length(which(apply(Promoter.meth.big.table.clean,1, function(x)  length(na.omit(x))   ) == 0))
+
+dim(Promoter.meth.big.table.clean)
+
+# 1/10 promoters are missing in all samples! 
+# choosing upstream 2kbp , downstream 500, only 1/30 promoter are completely missing. 
+
+hist(as.numeric(Promoter.meth.big.table.clean[1,]))
+
+match()
+
+hist(as.numeric(Promoter.meth.big.table.clean[8,]))
+
+median(  as.numeric(Promoter.meth.big.table.clean[8,]) ,na.rm = T )
+
+which.max(table(findInterval(as.numeric(Promoter.meth.big.table.clean[8,]), seq(from=0,to=1,by = 0.2)))[c(2:6)])
+hist(as.numeric(Promoter.meth.big.table.clean[8,]))
+
